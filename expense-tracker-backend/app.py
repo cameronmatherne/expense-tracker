@@ -88,11 +88,9 @@ def update_transaction(transaction_id):
 
         updated_data = {
             "amount": amount,
-            "description": data.get("description", ""),
-            "category": data.get("category", "Uncategorized"),
+            "bucket": data.get("bucket", "Uncategorized"),
             "date": data.get("date", ""),
             "due_date": data.get("due_date", ""),
-            "type": transaction_type,
         }
 
         result = collection.update_one(
