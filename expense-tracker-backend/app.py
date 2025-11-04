@@ -64,10 +64,32 @@ def get_transactions():
 
 @app.route('/api/transactions/<transaction_id>', methods=['DELETE'])
 def delete_transaction(transaction_id):
+    transaction = collection.find_one({'_id': ObjectId(transaction_id)})
+    
+    if not transaction:
+        return jsonify({'error': 'Transaction not found'}), 404
+    
     result = collection.delete_one({'_id': ObjectId(transaction_id)})
+
     if result.deleted_count == 1:
-        return jsonify({'message': 'Transaction deleted'}), 200
+        bucket_name = transaction.get('bucket')
+        amount = float(transaction.get('amount', 0))
+        # Undo the amount effect — reverse of what we did on insert
+        buckets.update_one(
+            {'name': bucket_name},
+            {'$inc': {'spent': -amount}}
+        )
+        
+        return jsonify({'message': 'Transaction deleted and bucket updated'}), 200
+    
     return jsonify({'error': 'Transaction not found'}), 404
+
+@app.route('/api/buckets/<bucket_id>', methods=['DELETE'])
+def delete_bucket(bucket_id):
+    result = buckets.delete_one({'_id': ObjectId(bucket_id)})
+    if result.deleted_count == 1:
+        return jsonify({'message': 'Bucket deleted'}), 200
+    return jsonify({'error': 'Bucket not found'}), 404
 
 
 @app.route('/api/transactions/<transaction_id>', methods=['PUT'])
