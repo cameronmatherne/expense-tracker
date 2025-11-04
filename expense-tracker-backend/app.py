@@ -10,32 +10,47 @@ client = MongoClient('mongodb://localhost:27017/')
 db = client['expense-tracker-db']
 collection = db['transaction']
 balance_collection = db['balance']
-buckets_collection = db['buckets']
+buckets = db['buckets']
 
 
 @app.route('/api/transactions', methods=['POST'])
 def create_transaction():
     
     data = request.json
-    transaction_type = data.get("type", "withdrawal").lower()
+    # grab bucket name from json 
+    bucket_name = data.get("bucket") 
+    if not bucket_name:
+        return jsonify({"error": "Bucket (category) is required"}), 400
+
     amount = float(data.get("amount", 0))
 
-    if transaction_type == "withdrawal":
-        amount = -abs(amount)
-    else:
-        amount = abs(amount)
+    # make sure bucket exists 
+    bucket = buckets.find_one({"name": bucket_name})
+    if not bucket:
+        return jsonify({"error": f"Bucket '{bucket_name}' not found"}), 404
 
     transaction = {
         "amount": amount,
-        "description": data.get("description", ""),
-        "category": data.get("category", "Uncategorized"),
+        "bucket": bucket_name,
         "date": data.get("date", ""),
         "due_date": data.get("due_date", ""),
-        "type": transaction_type,
     }
 
-    result = collection.insert_one(transaction)
-    return jsonify({'message': 'Transaction added', 'id': str(result.inserted_id)}), 201
+    # insert transaction into transactions collection 
+    collection.insert_one(transaction)
+
+    update_amount = amount
+
+    # update the buckets collection 
+    buckets.update_one(
+        {"name": bucket_name},
+        {"$inc": {"spent": update_amount}}
+    )
+
+    return jsonify({
+        "message": f"Transaction added and bucket '{bucket_name}' updated",
+        "bucket_updated": bucket_name
+    }), 201
 
 
 @app.route('/api/transactions', methods=['GET'])
@@ -133,7 +148,7 @@ def set_balance():
 @app.route('/api/buckets', methods=['GET'])
 def get_buckets(): 
     buckets = []
-    for bucket in buckets_collection.find():
+    for bucket in buckets.find():
         bucket['_id'] = str(bucket['_id'])
         buckets.append(bucket)
     return jsonify(buckets), 200
@@ -147,7 +162,7 @@ def create_bucket():
         "limit": float(data.get("limit", 0)),
         "spent": 0
     }
-    result = buckets_collection.insert_one(bucket)
+    result = buckets.insert_one(bucket)
     return jsonify({'message': 'Bucket created', 'id': str(result.inserted_id)}), 201
 
 
