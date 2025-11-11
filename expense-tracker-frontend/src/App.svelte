@@ -8,6 +8,7 @@
   let transactions: any[] = [];
   let buckets: any[] = [];
   let amount: number = 0;
+  let limit: number = 0;
   let balance: number = 0;
   let balanceEntry: number = 0;
   let name: string = "";
@@ -25,6 +26,7 @@
   let showAddModal = false;
   let showBalanceModal = false;
   let showEditModal = false;
+  let showBucketModal = false;
   let editingTransaction: any = {};
 
   const today = new Date();
@@ -73,7 +75,7 @@
       const res = await fetch("http://localhost:5000/api/transactions");
       const data = await res.json();
       transactions = data.sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
       );
 
       totalDeposits = 0;
@@ -95,7 +97,6 @@
       const res = await fetch("http://localhost:5000/api/buckets");
       const data = await res.json();
       buckets = data;
-
     } catch (err) {
       console.error("Error fetching buckets:", err);
     }
@@ -198,7 +199,7 @@
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(editingTransaction),
-        }
+        },
       );
 
       showEditModal = false;
@@ -218,142 +219,140 @@
 </script>
 
 <main>
-  <div class="buttons-top" style="margin-bottom: 1rem;">
-    <Button on:click={() => (showAddModal = true)}>Add Transaction</Button>
-    <Button style="margin-left: 10px;" on:click={() => (showBalanceModal = true)}>
-      Update Balance
-    </Button>
-  </div>
+  <div class="container" style="display: flex; gap: 2rem; flex-direction: row; align-items: flex-start;">
+    <!-- LEFT SPLITTER -->
+    <div class="left-splitter" style="flex: 1; display: flex; flex-direction: column; align-items: center;">
+      <div class="buttons-top" style="margin-bottom: 1rem; display: flex; gap: 10px; flex-direction: column; max-width: 200px; align-items: center;">
+        <Button style="margin-left: 10px; width: 300px" on:click={() => (showAddModal = true)}>Add Transaction</Button>
+        <Button style="margin-left: 10px; width: 300px" on:click={() => (showBucketModal = true)}>Add Bucket</Button>
+        <Button style="margin-left: 10px; width: 300px" on:click={() => (showBalanceModal = true)}>Update Balance</Button>
+      </div>
 
-  <div class="transaction-container">
-    <div class="transaction-input">
-      <h1>Current Balance: {formatCurrency(balance)}</h1>
-      <hr />
-      <h3>Total Deposits: <span class="positive">{formatCurrency(totalDeposits)}</span></h3>
-      <h3>Total Withdrawals: <span class="negative">{formatCurrency(-totalWithdrawals)}</span></h3>
-      <h1> Forecasted Balance: </h1>
-      <h1 class={netChange >= 0 ? "positive" : "negative"}>
-        {formatCurrency(netChange)}
-      </h1>
+      <div class="transaction-container">
+        <div class="transaction-input">
+          <h1>Current Balance: {formatCurrency(balance)}</h1>
+          <hr />
+          <h3>
+            Total Expenses:
+            <span class="negative">{formatCurrency(totalDeposits)}</span>
+          </h3>
+        </div>
+      </div>
     </div>
 
+    <!-- RIGHT SPLITTER -->
+    <div class="right-splitter" style="flex: 2; display: flex; flex-direction: column; gap: 1.5rem;">
+      <div class="buckets-span">
+        <div class="buckets">
+          <h2>Expense Buckets:</h2>
+          <ul>
+            {#each buckets as bucket}
+              <li>
+                <div class="tx-row">
+                  <strong>{bucket.name}</strong>
+                  <div class="tx-desc">Limit: ${bucket.limit}</div>
+                  <div class="tx-desc">Total Spent: ${bucket.spent}</div>
+                  <div class="tx-desc">
+                    Remaining: ${bucket.limit - bucket.spent} ({((bucket.spent / bucket.limit) * 100).toFixed(1)}%)
+                  </div>
+                </div>
+              </li>
+            {/each}
+          </ul>
+        </div>
+      </div>
 
-    <div class="transaction-history">
-      <div class="buckets"> 
-        <h2> Expense Buckets:</h2>
+      <div class="transaction-history">
+        <h2>Expense Forecast from {currentDate} - {oneMonthFromNow}</h2>
         <ul>
-          {#each buckets as bucket}
-            <li>
+          {#each transactions as tx}
+            <li class="transaction-item">
               <div class="tx-row">
-                <strong>{bucket.name}</strong>
-                <div class="tx-desc">Limit: {bucket.limit}</div>
-                <div class="tx-desc">Total Spent: {bucket.spent}</div>
-                <div class="tx-desc">Remaining: ${bucket.limit - bucket.spent} ({(bucket.spent / bucket.limit * 100).toFixed(1)}%)</div>
+                <div class="tx-amount negative">{formatCurrency(tx.amount)}</div>
+                <div class="tx-date">{tx.date ? new Date(tx.date).toLocaleDateString() : "No date"}</div>
+                <div class="tx-desc">{tx.description || "No description"}</div>
+                <div class="tx-category">{tx.category || "Uncategorized"}</div>
+                <div class="tx-due">{tx.due_date || "None"}</div>
+
+                {#if tx.category === "credit_card"}
+                  <div class="tx-cc-extra">
+                    <div class="cc-balance">Balance: {formatCurrency(tx.credit_card_balance || 0)}</div>
+                    <div class="cc-payment">
+                      <label>
+                        Pay Amount:
+                        <input
+                          type="number"
+                          min="0"
+                          max={tx.credit_card_balance}
+                          step="0.01"
+                          bind:value={tx.payAmount}
+                          placeholder="Enter payment amount"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                {/if}
+
+                <button class="delete-button" aria-label="Delete" on:click={() => deleteTransaction(tx._id)}>×</button>
+                <button class="edit-button" aria-label="Edit" on:click={() => editTransaction(tx)}>✎</button>
               </div>
             </li>
           {/each}
         </ul>
-
-
       </div>
-      <h2>Expense Forecast from {currentDate}-{oneMonthFromNow}</h2>
-      <ul>
-        {#each transactions as tx}
-          <li class="transaction-item">
-            <div class="tx-row">
-              <div class="tx-amount {tx.amount >= 0 ? 'positive' : 'negative'}">
-                {formatCurrency(tx.amount)}
-              </div>
-              <div class="tx-date">
-                {tx.date ? new Date(tx.date).toLocaleDateString() : "No date"}
-              </div>
-              <div class="tx-desc">{tx.description || "No description"}</div>
-              <div class="tx-category">{tx.category || "Uncategorized"}</div>
-              <div class="tx-due">{tx.due_date || "None"}</div>
-
-              {#if tx.category === "credit_card"}
-                <div class="tx-cc-extra">
-                  <div class="cc-balance">Balance: {formatCurrency(tx.credit_card_balance || 0)}</div>
-                  <div class="cc-payment">
-                    <label>
-                      Pay Amount:
-                      <input
-                        type="number"
-                        min="0"
-                        max={tx.credit_card_balance}
-                        step="0.01"
-                        bind:value={tx.payAmount}
-                        placeholder="Enter payment amount"
-                      />
-                    </label>
-                  </div>
-                </div>
-              {/if}
-
-              <button class="delete-button" aria-label="Delete" on:click={() => deleteTransaction(tx._id)}>×</button>
-              <button class="edit-button" aria-label="Edit" on:click={() => editTransaction(tx)}>✎</button>
-            </div>
-          </li>
-        {/each}
-      </ul>
     </div>
   </div>
 
   {#if showAddModal}
-    <div class="modal-overlay" on:click={() => (showAddModal = false)}>
-      <div class="modal-content" on:click|stopPropagation>
-        <h2>Add Transaction</h2>
+  <div class="modal-overlay" on:click={() => (showAddModal = false)}>
+    <div 
+    class="modal-content" 
+    on:click|stopPropagation
+    style="background-color: #1a1a1a; color: white; padding: 1.5rem; border-radius: 8px;">
+      <h2>Add Transaction</h2>
 
-        <input
-          type="number"
-          min="0.00"
-          step="0.01"
-          bind:value={amount}
-          placeholder="Amount"
-        />
-        <input
-          type="text"
-          bind:value={name}
-          placeholder="Name"
-        />
-        <input
-          type="text"
-          bind:value={dueDate}
-          placeholder="Due Date (MM/DD)"
-          maxlength="5"
-        />
+      <label for="amount">Amount:</label>
+      <input
+        type="number"
+        min="0.00"
+        step="0.01"
+        bind:value={amount}
+        placeholder="Amount"
+      />
+      <input type="text" bind:value={name} placeholder="Name" />
+      <input
+        type="text"
+        bind:value={dueDate}
+        placeholder="Due Date (MM/DD)"
+        maxlength="5"
+      />
 
-        <select bind:value={type}>
-          <option value="" disabled selected hidden>Select transaction type</option>
-          <option value="deposit">Deposit</option>
-          <option value="withdrawal">Withdrawal</option>
-        </select>
+      <label>Expense Category</label>
+      <select bind:value={expenseCategory}>
+        <option value="" disabled selected hidden>Select category</option>
+        <option value="credit_card">Credit Card</option>
+        <option value="personal_loan">Personal Loan</option>
+        <option value="student_loan">Student Loan</option>
+        <option value="other">Other</option>
+      </select>
 
-        <label>Expense Category</label>
-        <select bind:value={expenseCategory}>
-          <option value="" disabled selected hidden>Select category</option>
-          <option value="credit_card">Credit Card</option>
-          <option value="personal_loan">Personal Loan</option>
-          <option value="student_loan">Student Loan</option>
-          <option value="other">Other</option>
-        </select>
 
-        <label class="checkbox-label">
-          <input type="checkbox" bind:checked={nonRecurring} />
-          One-time Payment (Non-Recurring)
-        </label>
-
-        <div class="modal-actions">
-          <Button on:click={addTransaction}>Add</Button>
-          <Button color="gray" on:click={() => (showAddModal = false)}>Cancel</Button>
-        </div>
+      <div class="modal-actions">
+        <Button color="gray" on:click={addTransaction}>Add</Button>
+        <Button color="gray" on:click={() => (showAddModal = false)}
+          >Cancel</Button
+        >
       </div>
     </div>
+  </div>
   {/if}
 
   {#if showBalanceModal}
     <div class="modal-overlay" on:click={() => (showBalanceModal = false)}>
-      <div class="modal-content" on:click|stopPropagation>
+      <div 
+      class="modal-content" 
+      on:click|stopPropagation
+      style="background-color: #1a1a1a; color: white; padding: 1.5rem; border-radius: 8px;">
         <h2>Update Balance</h2>
         <input
           type="number"
@@ -362,9 +361,13 @@
           bind:value={balanceEntry}
           placeholder="Set Balance"
         />
-        <div style="margin-top: 1rem; display: flex; justify-content: flex-end; gap: 1rem;">
-          <Button on:click={updateBalance}>Update</Button>
-          <Button color="light" on:click={() => (showBalanceModal = false)}>Cancel</Button>
+        <div
+          style="margin-top: 1rem; display: flex; justify-content: flex-end; gap: 1rem;"
+        >
+          <Button color="gray" on:click={updateBalance}>Update</Button>
+          <Button color="gray" on:click={() => (showBalanceModal = false)}
+            >Cancel</Button
+          >
         </div>
       </div>
     </div>
@@ -372,12 +375,29 @@
 
   {#if showEditModal}
     <div class="modal-overlay" on:click={() => (showEditModal = false)}>
-      <div class="modal-content" on:click|stopPropagation>
+      <div 
+      class="modal-content" 
+      on:click|stopPropagation
+      style="background-color: #1a1a1a; color: white; padding: 1.5rem; border-radius: 8px;">
         <h2>Edit Transaction</h2>
-        <input type="number" min="0.00" step="0.01" bind:value={editingTransaction.amount} />
-        <input type="text" bind:value={editingTransaction.description} placeholder="Name" />
-        <input type="text" bind:value={editingTransaction.due_date} placeholder="Due Date (MM/DD)" maxlength="5" />
-        
+        <input
+          type="number"
+          min="0.00"
+          step="0.01"
+          bind:value={editingTransaction.amount}
+        />
+        <input
+          type="text"
+          bind:value={editingTransaction.description}
+          placeholder="Name"
+        />
+        <input
+          type="text"
+          bind:value={editingTransaction.due_date}
+          placeholder="Due Date (MM/DD)"
+          maxlength="5"
+        />
+
         <select bind:value={editingTransaction.type}>
           <option value="deposit">Deposit</option>
           <option value="withdrawal">Withdrawal</option>
@@ -392,9 +412,42 @@
           <option value="other">Other</option>
         </select>
 
-        <div style="margin-top: 1rem; display: flex; justify-content: flex-end; gap: 1rem;">
-          <Button on:click={saveTransactionEdits}>Save</Button>
-          <Button color="light" on:click={() => (showEditModal = false)}>Cancel</Button>
+        <div
+          style="margin-top: 1rem; display: flex; justify-content: flex-end; gap: 1rem;"
+        >
+          <Button color="gray" on:click={saveTransactionEdits}>Save</Button>
+          <Button color="gray" on:click={() => (showEditModal = false)}
+            >Cancel</Button
+          >
+        </div>
+      </div>
+    </div>
+  {/if}
+
+  {#if showBucketModal}
+    <div class="modal-overlay" on:click={() => (showBucketModal = false)}>
+      <div 
+      class="modal-content" 
+      on:click|stopPropagation
+      style="background-color: #1a1a1a; color: white; padding: 1.5rem; border-radius: 8px;"
+      >
+        <h2>Add Bucket</h2>
+
+        <input type="text" bind:value={name} placeholder="Bucket name" />
+        <label for="limit">Limit Amount:</label>
+        <input
+          type="Limit"
+          min="0.00"
+          step="0.01"
+          bind:value={limit}
+          placeholder="Bucket limit"
+          id="limit"
+          name="limit"
+
+        />
+
+        <div class="modal-actions">
+          <Button color="gray" on:click={() => (showBucketModal = false)}>Cancel</Button>
         </div>
       </div>
     </div>
@@ -510,7 +563,8 @@
     text-align: center;
   }
 
-  .delete-button, .edit-button {
+  .delete-button,
+  .edit-button {
     width: 24px;
     height: 24px;
     border: none;
@@ -545,7 +599,10 @@
 
   .modal-overlay {
     position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     background-color: rgba(0, 0, 0, 0.4);
     display: flex;
     align-items: center;

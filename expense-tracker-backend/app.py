@@ -12,7 +12,6 @@ collection = db['transaction']
 balance_collection = db['balance']
 buckets = db['buckets']
 
-
 @app.route('/api/transactions', methods=['POST'])
 def create_transaction():
     
@@ -83,14 +82,6 @@ def delete_transaction(transaction_id):
         return jsonify({'message': 'Transaction deleted and bucket updated'}), 200
     
     return jsonify({'error': 'Transaction not found'}), 404
-
-@app.route('/api/buckets/<bucket_id>', methods=['DELETE'])
-def delete_bucket(bucket_id):
-    result = buckets.delete_one({'_id': ObjectId(bucket_id)})
-    if result.deleted_count == 1:
-        return jsonify({'message': 'Bucket deleted'}), 200
-    return jsonify({'error': 'Bucket not found'}), 404
-
 
 @app.route('/api/transactions/<transaction_id>', methods=['PUT'])
 def update_transaction(transaction_id):
@@ -166,16 +157,23 @@ def set_balance():
 
 
 @app.route('/api/buckets', methods=['GET'])
-def get_buckets(): 
-    buckets = []
-    for bucket in buckets.find():
-        bucket['_id'] = str(bucket['_id'])
-        buckets.append(bucket)
-    return jsonify(buckets), 200
+def get_buckets():
+    try:
+        # Fetch all bucket documents from MongoDB
+        bucket_docs = list(buckets.find())
+        
+        # Convert ObjectIds to strings for JSON serialization
+        for bucket in bucket_docs:
+            bucket['_id'] = str(bucket['_id'])
+        
+        return jsonify(bucket_docs), 200
 
-@app.route('/api/buckets', methods=['POST'])
+    except Exception as e:
+        print("Error fetching buckets:", e)
+        return jsonify({"error": "Failed to fetch buckets"}), 500
+
+@app.route('/api/new_bucket', methods=['POST'])
 def create_bucket():
-    
     data = request.json
     bucket = {
         "name": data.get("name", ""),
@@ -184,6 +182,13 @@ def create_bucket():
     }
     result = buckets.insert_one(bucket)
     return jsonify({'message': 'Bucket created', 'id': str(result.inserted_id)}), 201
+
+@app.route('/api/buckets/<bucket_id>', methods=['DELETE'])
+def delete_bucket(bucket_id):
+    result = buckets.delete_one({'_id': ObjectId(bucket_id)})
+    if result.deleted_count == 1:
+        return jsonify({'message': 'Bucket deleted'}), 200
+    return jsonify({'error': 'Bucket not found'}), 404
 
 
 

@@ -1,0 +1,5 @@
+C:\Users\13377\Desktop\expense-tracker\expense-tracker-backend-rust\backend\target\debug\build\serde-fd1c85fa6ed66727\build_script_build-fd1c85fa6ed66727.exe: C:\Users\13377\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\build.rs
+
+C:\Users\13377\Desktop\expense-tracker\expense-tracker-backend-rust\backend\target\debug\build\serde-fd1c85fa6ed66727\build_script_build-fd1c85fa6ed66727.d: C:\Users\13377\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\build.rs
+
+C:\Users\13377\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\build.rs:
