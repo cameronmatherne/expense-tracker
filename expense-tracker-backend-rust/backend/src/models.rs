@@ -35,20 +35,30 @@ pub struct CreateBucket {
     pub current_amount: f64,
 }
 
-#[derive (Serialize, Deserialize, Debug)]
-pub struct NewTransaction {
+#[derive(Deserialize, Serialize, Debug)]
+pub struct CreateTransaction {
     pub amount: f64,
-    pub transaction_type: String,
-    pub payment_method: String,
-    pub expense_category: Option<String>,
+    pub bucket_id: i32,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct CreateBalance {
+    pub amount: f64,
+    pub account_type: String,
+    pub user_name: String,
 }
 
 #[derive (Serialize, Deserialize, Debug)]
 pub struct UpdateTransaction {
     pub amount: Option<f64>,
-    pub transaction_type: Option<String>,
-    pub payment_method: Option<String>,
-    pub expense_category: Option<String>,
+    pub bucket_id: Option<i32>,
+}
+
+#[derive (Serialize, Deserialize, Debug)]
+pub struct UpdateBalance {
+    pub amount: Option<f64>,
+    pub account_type: Option<String>,
+    pub user_name: Option<String>,
 }
 
 #[derive (Serialize, Deserialize, Debug)]
