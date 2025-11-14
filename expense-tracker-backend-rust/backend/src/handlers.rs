@@ -117,7 +117,7 @@ pub async fn create_transaction(
             StatusCode::CREATED,
             Json(json!({
                 "status": "success",
-                "message": "Bucket created successfully"
+                "message": "Transaction created successfully"
             })),
         )),
         Err(e) => Err((

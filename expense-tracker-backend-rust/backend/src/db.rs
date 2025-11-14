@@ -237,3 +237,17 @@ pub async fn db_delete_balance(
 
     Ok(())
 }
+
+// pub async fn calculate_budget() -> Result<(), sqlx::Error> {
+
+//     let transactions = db_get_transactions().await?;
+//     let mut total_spent: f64 = 0.00;
+
+//     for i in &transactions {
+//         total_spent += transactions[i].amount; 
+
+//     }
+
+//     Ok(StatusCode::OK)
+
+// }
