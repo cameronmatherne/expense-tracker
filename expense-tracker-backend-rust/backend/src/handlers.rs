@@ -99,7 +99,9 @@ pub async fn delete_bucket(
 
 pub async fn get_transactions() -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
     match db_get_transactions().await {
-        Ok(transactions) => Ok(Json(transactions)),
+        Ok(transactions) => Ok(Json(json!({
+            "transactions": transactions
+        }))),
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(json!({
@@ -242,6 +244,26 @@ pub async fn delete_balance(
         Json(json!({
             "status": "error",
             "message": format!("Error trying to delete balance with id {}: {}", id, e)
+        })),
+    )),
+    }
+}
+
+pub async fn calculate_budget() -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
+
+    match db_calculate_budget().await { 
+    Ok(_) => Ok((
+        StatusCode::OK,
+        Json(json!({
+            "status": "success",
+            "message": format!("Budget successfully created")
+        })),
+    )),
+    Err(e) => Err((
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(json!({
+            "status": "error",
+            "message": format!("Error trying to calculate bduget: {}", e)
         })),
     )),
     }

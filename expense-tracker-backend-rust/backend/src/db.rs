@@ -238,16 +238,21 @@ pub async fn db_delete_balance(
     Ok(())
 }
 
-// pub async fn calculate_budget() -> Result<(), sqlx::Error> {
+pub async fn db_calculate_budget() -> Result<(), sqlx::Error> {
 
-//     let transactions = db_get_transactions().await?;
-//     let mut total_spent: f64 = 0.00;
+    let mut income: f64 = 2120.00;
 
-//     for i in &transactions {
-//         total_spent += transactions[i].amount; 
+    let mut personal: f64 = 2120.00 * 0.25;
+    println! ("income bucketed for personal spending: {} ", personal);
+    let mut savings: f64 = 2120.00 * 0.25;
+    println! ("income bucketed for savings: {}", savings);
+    let mut bills: f64 = 2120.00 * 0.50;
+    println! ("income budgeted for bills: {} ", bills);
 
-//     }
-
-//     Ok(StatusCode::OK)
-
-// }
+    let transactions = db_get_transactions().await?;
+    let balance = db_get_balance().await?;
+    println!("current balance: {:?} ", balance);
+    let mut total_spent: f64 = transactions.iter().map(|item| item.amount).sum();
+    
+    Ok(())
+}

@@ -3,6 +3,7 @@
   import { Button } from "flowbite-svelte";
   import { onMount } from "svelte";
   import { Chart, registerables } from "chart.js";
+  // import { toDimension } from "chart.js/helpers";
 
   // Transactions and form state
   let transactions: any[] = [];
@@ -41,8 +42,6 @@
     return `${month}/${day}`;
   }
 
-  Chart.register(...registerables);
-
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat("en-US", {
       style: "currency",
@@ -64,6 +63,7 @@
     try {
       const res = await fetch("http://localhost:5000/api/balance");
       const data = await res.json();
+      console.log("data:  ", data);
       balance = data.balance || 0;
     } catch (err) {
       console.error("Error fetching balance:", err);
@@ -71,149 +71,37 @@
   };
 
   const fetchTransactions = async () => {
-    try {
-      const res = await fetch("http://localhost:5000/api/transactions");
-      const data = await res.json();
-      transactions = data.sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-      );
-
-      totalDeposits = 0;
-      totalWithdrawals = 0;
-      total = 0;
-      transactions.forEach((tx) => {
-        const amt = Number(tx.amount);
-        if (amt >= 0) totalDeposits += amt;
-        else totalWithdrawals += Math.abs(amt);
-        total += amt;
-      });
-    } catch (err) {
-      console.error("Error fetching transactions:", err);
-    }
+  // todo
   };
 
   const fetchBuckets = async () => {
-    try {
-      const res = await fetch("http://localhost:5000/api/buckets");
-      const data = await res.json();
-      buckets = data;
-    } catch (err) {
-      console.error("Error fetching buckets:", err);
-    }
+  // todo
   };
 
   const updateBalance = async () => {
-    if (!balanceEntry || balanceEntry <= 0) return;
-    try {
-      const res = await fetch("http://localhost:5000/api/balance", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ balance: balanceEntry }),
-      });
-      const data = await res.json();
-      balance = data.balance;
-      balanceEntry = 0;
-      showBalanceModal = false;
-    } catch (err) {
-      console.error("Error updating balance:", err);
-    }
+  // todo
   };
 
   const addTransaction = async () => {
-    if (
-      !amount ||
-      amount <= 0 ||
-      name.trim() === "" ||
-      expenseCategory.trim() === ""
-    ) {
-      alert("Please fill all required fields, including selecting a category.");
-      return;
-    }
-
-    try {
-      await fetch("http://localhost:5000/api/transactions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amount,
-          description: name,
-          category: expenseCategory, // ensure backend expects this key!
-          date: new Date().toISOString().slice(0, 10),
-          due_date: dueDate,
-          type,
-          credit_card_balance:
-            expenseCategory === "credit_card" ? creditCardBalance : null,
-          non_recurring: nonRecurring,
-        }),
-      });
-
-      // Reset form fields
-      amount = 0;
-      name = "";
-      expenseCategory = "";
-      dueDate = "";
-      type = "withdrawal";
-      creditCardBalance = 0;
-      nonRecurring = false;
-      showAddModal = false;
-
-      await fetchTransactions();
-      await fetchSummary();
-    } catch (err) {
-      console.error("Error adding transaction:", err);
-    }
+  // todo
   };
 
-  const deleteTransaction = async (id: string) => {
-    try {
-      await fetch(`http://localhost:5000/api/transactions/${id}`, {
-        method: "DELETE",
-      });
-      await fetchTransactions();
-      await fetchSummary();
-    } catch (err) {
-      console.error("Error deleting transaction:", err);
-    }
+  const deleteTransaction = async () => {
+  // todo
   };
 
-  const editTransaction = (tx) => {
-    editingTransaction = { ...tx };
-    showEditModal = true;
+  const editTransaction = () => {
+  // todo
   };
 
   const saveTransactionEdits = async () => {
-    if (
-      !editingTransaction.amount ||
-      editingTransaction.description.trim() === "" ||
-      !editingTransaction.category ||
-      editingTransaction.category.trim() === ""
-    ) {
-      alert("Please fill all required fields before saving.");
-      return;
-    }
-
-    try {
-      await fetch(
-        `http://localhost:5000/api/transactions/${editingTransaction._id}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(editingTransaction),
-        },
-      );
-
-      showEditModal = false;
-      await fetchTransactions();
-      await fetchSummary();
-    } catch (err) {
-      console.error("Error updating transaction:", err);
-    }
+  // todo
   };
 
   onMount(() => {
     fetchTransactions();
     fetchSummary();
-    fetchBalance();
+    // fetchBalance();
     fetchBuckets();
   });
 </script>
@@ -250,10 +138,10 @@
               <li>
                 <div class="tx-row">
                   <strong>{bucket.name}</strong>
-                  <div class="tx-desc">Limit: ${bucket.limit}</div>
-                  <div class="tx-desc">Total Spent: ${bucket.spent}</div>
+                  <div class="tx-desc">Limit: ${bucket.limit_amount}</div>
+                  <div class="tx-desc">Total Spent: ${bucket.current_amount}</div>
                   <div class="tx-desc">
-                    Remaining: ${bucket.limit - bucket.spent} ({((bucket.spent / bucket.limit) * 100).toFixed(1)}%)
+                    Remaining: ${bucket.limit_amount - bucket.current_amount} ({((bucket.limit_amount / bucket.current_amount) * 100).toFixed(1)}%)
                   </div>
                 </div>
               </li>
@@ -304,12 +192,13 @@
   </div>
 
   {#if showAddModal}
-  <div class="modal-overlay" on:click={() => (showAddModal = false)}>
+  <div class="modal-overlay" role="presentation" on:click={() => (showAddModal = false)}>
     <div 
     class="modal-content" 
     on:click|stopPropagation
+    role="presentation"
     style="background-color: #1a1a1a; color: white; padding: 1.5rem; border-radius: 8px;">
-      <h2>Add Transaction</h2>
+    <h2>Add Transaction</h2>
 
       <label for="amount">Amount:</label>
       <input
@@ -327,7 +216,7 @@
         maxlength="5"
       />
 
-      <label>Expense Category</label>
+      <label for="expense-category">Expense Category</label>
       <select bind:value={expenseCategory}>
         <option value="" disabled selected hidden>Select category</option>
         <option value="credit_card">Credit Card</option>
@@ -338,20 +227,19 @@
 
 
       <div class="modal-actions">
-        <Button color="gray" on:click={addTransaction}>Add</Button>
-        <Button color="gray" on:click={() => (showAddModal = false)}
-          >Cancel</Button
-        >
+        <Button color="light" on:click={addTransaction}>Add</Button>
+        <Button color="light" on:click={() => (showAddModal = false)}>Cancel</Button>
       </div>
     </div>
   </div>
   {/if}
 
   {#if showBalanceModal}
-    <div class="modal-overlay" on:click={() => (showBalanceModal = false)}>
+    <div class="modal-overlay" role="presentation" on:click={() => (showBalanceModal = false)}>
       <div 
       class="modal-content" 
       on:click|stopPropagation
+      role="presentation"
       style="background-color: #1a1a1a; color: white; padding: 1.5rem; border-radius: 8px;">
         <h2>Update Balance</h2>
         <input
@@ -364,8 +252,8 @@
         <div
           style="margin-top: 1rem; display: flex; justify-content: flex-end; gap: 1rem;"
         >
-          <Button color="gray" on:click={updateBalance}>Update</Button>
-          <Button color="gray" on:click={() => (showBalanceModal = false)}
+          <Button color="light" on:click={updateBalance}>Update</Button>
+          <Button color="light" on:click={() => (showBalanceModal = false)}
             >Cancel</Button
           >
         </div>
@@ -374,10 +262,11 @@
   {/if}
 
   {#if showEditModal}
-    <div class="modal-overlay" on:click={() => (showEditModal = false)}>
+    <div class="modal-overlay" role="presentation" on:click={() => (showEditModal = false)}>
       <div 
       class="modal-content" 
       on:click|stopPropagation
+      role="presentation"
       style="background-color: #1a1a1a; color: white; padding: 1.5rem; border-radius: 8px;">
         <h2>Edit Transaction</h2>
         <input
@@ -403,8 +292,8 @@
           <option value="withdrawal">Withdrawal</option>
         </select>
 
-        <label>Expense Category</label>
-        <select bind:value={editingTransaction.category}>
+        <label for="category">Expense Category</label>
+        <select bind:value={editingTransaction.category} id="category">
           <option value="" disabled selected hidden>Select category</option>
           <option value="credit_card">Credit Card</option>
           <option value="personal_loan">Personal Loan</option>
@@ -415,8 +304,8 @@
         <div
           style="margin-top: 1rem; display: flex; justify-content: flex-end; gap: 1rem;"
         >
-          <Button color="gray" on:click={saveTransactionEdits}>Save</Button>
-          <Button color="gray" on:click={() => (showEditModal = false)}
+          <Button color="light" on:click={saveTransactionEdits}>Save</Button>
+          <Button color="light" on:click={() => (showEditModal = false)}
             >Cancel</Button
           >
         </div>
@@ -425,14 +314,13 @@
   {/if}
 
   {#if showBucketModal}
-    <div class="modal-overlay" on:click={() => (showBucketModal = false)}>
+    <div class="modal-overlay" role="presentation" on:click={() => (showBucketModal = false)}>
       <div 
       class="modal-content" 
       on:click|stopPropagation
-      style="background-color: #1a1a1a; color: white; padding: 1.5rem; border-radius: 8px;"
-      >
+      role="presentation"
+      style="background-color: #1a1a1a; color: white; padding: 1.5rem; border-radius: 8px;">
         <h2>Add Bucket</h2>
-
         <input type="text" bind:value={name} placeholder="Bucket name" />
         <label for="limit">Limit Amount:</label>
         <input
@@ -445,9 +333,8 @@
           name="limit"
 
         />
-
         <div class="modal-actions">
-          <Button color="gray" on:click={() => (showBucketModal = false)}>Cancel</Button>
+          <Button color="light" on:click={() => (showBucketModal = false)}>Cancel</Button>
         </div>
       </div>
     </div>
