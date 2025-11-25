@@ -1,7 +1,8 @@
 // src/screens/HomeScreen.tsx
 import React, { useEffect, useState } from "react";
 import { View, Text, Pressable, Image, StyleSheet, ActivityIndicator } from "react-native";
-import { SafeAreaProvider } from "react-native-safe-area-context";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";  
+
 import { Balance, Transaction } from "../types";
 import { getBalance, getTransactions } from "../services/api";
 import BalanceCard from "../components/BalanceCard";
@@ -46,26 +47,37 @@ export default function HomeScreen() {
 
   const handleTransactionSubmit = (data: { amount: number; date: string; bucket_id: number }) => {
     console.log("New transaction:", data);
+
+
+
   };
 
   return (
     <SafeAreaProvider>
-      <View style={styles.topHeader}>
-        <Image source={require("../assets/images/logo.png")} style={styles.logo} />
-      </View>
-
+      <SafeAreaView style={styles.topHeader}>
+        <View> 
+          <Image source={require("../assets/images/logo.png")} style={styles.logo} />
+        </View>
+      </SafeAreaView>
       <View style={styles.bodySectionTop}>
         <BalanceCard balance={balance} />
 
-        <Pressable style={styles.button} onPress={() => setTransactionModalVisible(true)}>
-          <Text>Add Transaction</Text>
-        </Pressable>
+        <View> 
+          <Pressable style={styles.button} onPress={() => setTransactionModalVisible(true)}>
+            <Text>Add Transaction</Text>
+          </Pressable>
 
-        <TransactionModal
-          visible={transactionModalVisible}
-          onClose={() => setTransactionModalVisible(false)}
-          onSubmit={handleTransactionSubmit}
-        />
+          <TransactionModal
+            visible={transactionModalVisible}
+            onClose={() => setTransactionModalVisible(false)}
+            onSubmit={handleTransactionSubmit}
+          />
+
+          <Pressable style={styles.balanceButton} onPress={() => setTransactionModalVisible(true)}>
+            <Text>Edit Balance</Text>
+          </Pressable>
+        </View> 
+
       </View>
 
       <View style={styles.bodySectionBottom}>
@@ -77,11 +89,52 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  logo: { width: 150, height: 150, position: "absolute" },
-  loading: { flex: 1, justifyContent: "center", alignItems: "center" },
-  container: { flex: 1, justifyContent: "center", alignItems: "center" },
-  topHeader: { flex: 0.5, paddingHorizontal: 20, alignItems: "center", justifyContent: "center" },
-  bodySectionTop: { flex: 0.5, padding: 20, borderRadius: 12, backgroundColor: "#f4f4f4", alignItems: "center" },
-  bodySectionBottom: { flex: 1, padding: 20, borderRadius: 12, backgroundColor: "#f4f4f4" },
-  button: { padding: 12, borderRadius: 12, backgroundColor: "#2c82ff", marginTop: 10, alignItems: "center" },
+  logo: { 
+    width: 150, 
+    height: 150, 
+    marginTop: 70,
+  },
+  loading: { 
+    flex: 1, 
+    justifyContent: "center", 
+    alignItems: "center" 
+  },
+  container: { 
+    flex: 1, 
+    justifyContent: "center", 
+    alignItems: "center" 
+  },
+  topHeader: { 
+    flex: 0.5, 
+    paddingHorizontal: 20, 
+    alignItems: "center", 
+    justifyContent: "center" 
+  },
+  bodySectionTop: { 
+    flex: 0.5, 
+    padding: 20, 
+    borderRadius: 12, 
+    backgroundColor: "#f4f4f4", 
+    alignItems: "center",
+  },
+  bodySectionBottom: { 
+    flex: 1, 
+    padding: 20, 
+    borderRadius: 12, 
+    backgroundColor: "#f4f4f4"
+   },
+  button: { 
+    padding: 12, 
+    borderRadius: 12, 
+    backgroundColor: "#2c82ff", 
+    marginTop: 10, 
+    alignItems: "center" 
+  },
+  balanceButton: {
+    padding: 12, 
+    borderRadius: 12, 
+    backgroundColor: "#2c82ff", 
+    marginTop: 10, 
+    alignItems: "center",
+  },
 });
