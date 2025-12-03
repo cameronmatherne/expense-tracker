@@ -39,10 +39,13 @@ async fn main() {
         .route("/update_transaction/{id}", put(update_transaction))
         .route("/delete_transaction/{id}", delete(delete_transaction))
         .route("/get_balance", get(get_balance))
+        .route("/calculate_spent", get(calculate_spent))
         .route("/create_balance", post(create_balance))
         .route("/update_balance/{id}", put(update_balance))
         .route("/delete_balance/{id}", delete(delete_balance))
         .route("/calculate_budget", get(calculate_budget))
+        .route("/add_expense", post(create_expense))
+        .route("/delete_expense/{id}", delete(delete_expense))
         .layer(cors);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();

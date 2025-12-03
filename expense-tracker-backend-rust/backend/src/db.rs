@@ -2,6 +2,12 @@ use sqlx::{PgPool, query};
 use std::env;
 use dotenvy::dotenv;
 use crate::models::*;
+use rust_decimal::Decimal;
+use rust_decimal_macros::dec;
+use crate::models::{Transaction, Bucket, Balance, UpdateBalance, UpdateBucket, 
+    UpdateTransaction, CreateBalance, CreateBucket, CreateTransaction, CreateExpense, Expense};
+
+
 
 pub async fn create_pool() -> PgPool {
     dotenv().ok();
@@ -41,8 +47,8 @@ pub async fn db_get_buckets() -> Result<Vec<Bucket>, sqlx::Error> {
 
 pub async fn db_create_bucket(
     name: &String,
-    limit: &f64,
-    current: &f64,
+    limit: &Decimal,
+    current: &Decimal,
 ) -> Result<(), sqlx::Error> {
     let pool = create_pool().await;
 
@@ -61,8 +67,8 @@ pub async fn db_create_bucket(
 pub async fn db_modify_bucket(
     id: &i32,
     name: Option<String>,
-    limit: Option<f64>,
-    current: Option<f64>,
+    limit: Option<Decimal>,
+    current: Option<Decimal>,
 ) -> Result<(), sqlx::Error> {
     let pool = create_pool().await;
 
@@ -117,7 +123,7 @@ pub async fn db_get_transactions() -> Result<Vec<Transaction>, sqlx::Error> {
 }
 
 pub async fn db_create_transaction(
-    amount: &f64,
+    amount: &Decimal,
     bucket_id: &i32,
 ) -> Result<(), sqlx::Error> {
     let pool = create_pool().await;
@@ -133,12 +139,33 @@ pub async fn db_create_transaction(
     Ok(())
 }
 
+pub async fn db_create_expense(
+    amount: &Decimal,
+    due_date: &NaiveDateTime,
+    type: &String,
+) -> Result<(), sqlx::Error> {
+    let pool = create_pool().await;
+
+    let row = query!(
+        "INSERT INTO expenses (amount, due_date, type) VALUES ($1, $2, $3)",
+        amount,
+        due_date,
+        type    
+    )
+    .execute(&pool)
+    .await?;
+
+    Ok(())
+}
+
 pub async fn db_modify_transaction(
     id: &i32,
-    amount: Option<f64>,
+    amount: Option<Decimal>,
     bucket_id: Option<i32>,
 ) -> Result<(), sqlx::Error> {
     let pool = create_pool().await;
+
+    // let amount = Decimal::from_str(&amount_string)?;
 
     let row = query!(
         "UPDATE transaction SET amount = $1, bucket_id = $2 WHERE id = $3",
@@ -158,6 +185,18 @@ pub async fn db_delete_transaction(
     let pool = create_pool().await;
 
     let query = query!("DELETE FROM transaction WHERE id = $1", id)
+    .execute(&pool)
+    .await?;
+
+    Ok(())
+}
+
+pub async fn db_delete_expense(
+    id: &i32,
+) -> Result<(), sqlx::Error> {
+    let pool = create_pool().await;
+
+    let query = query!("DELETE FROM expenses WHERE id = $1", id)
     .execute(&pool)
     .await?;
 
@@ -186,8 +225,25 @@ pub async fn db_get_balance() -> Result<Balance, sqlx::Error> {
     Ok(balance)
 }
 
+pub async fn db_calculate_spent() -> Result<Decimal, sqlx::Error> {
+    let pool = create_pool().await;
+
+    let row = query!(
+        r#"
+        SELECT SUM(amount) as total_amount
+        FROM transaction 
+        "#
+    )
+    .fetch_one(&pool)
+    .await?;
+
+    let total_amount = row.total_amount.unwrap_or(dec!(0.0));
+
+    Ok(total_amount)
+}
+
 pub async fn db_create_balance(
-    amount: &f64,
+    amount: &Decimal,
     account_type: &String,
     user_name: &String,
 ) -> Result<(), sqlx::Error> {
@@ -207,7 +263,7 @@ pub async fn db_create_balance(
 
 pub async fn db_modify_balance(
     id: &i32,
-    amount: Option<f64>,
+    amount: Option<Decimal>,
     account_type: Option<String>,
     user_name: Option<String>,
 ) -> Result<(), sqlx::Error> {
@@ -240,19 +296,19 @@ pub async fn db_delete_balance(
 
 pub async fn db_calculate_budget() -> Result<(), sqlx::Error> {
 
-    let mut income: f64 = 2120.00;
+    let mut income: Decimal = dec!(2120.00);
 
-    let mut personal: f64 = 2120.00 * 0.25;
+    let mut personal: Decimal = dec!(2120.00) * dec!(0.25);
     println! ("income bucketed for personal spending: {} ", personal);
-    let mut savings: f64 = 2120.00 * 0.25;
+    let mut savings: Decimal = dec!(2120.00) * dec!(0.25);
     println! ("income bucketed for savings: {}", savings);
-    let mut bills: f64 = 2120.00 * 0.50;
+    let mut bills: Decimal = dec!(2120.00) * dec!(0.50);
     println! ("income budgeted for bills: {} ", bills);
 
     let transactions = db_get_transactions().await?;
     let balance = db_get_balance().await?;
     println!("current balance: {:?} ", balance);
-    let mut total_spent: f64 = transactions.iter().map(|item| item.amount).sum();
+    let mut total_spent: Decimal = transactions.iter().map(|item| item.amount).sum();
     
     Ok(())
 }

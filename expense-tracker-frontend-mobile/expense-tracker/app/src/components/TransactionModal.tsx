@@ -1,21 +1,19 @@
 import React, { useState } from "react";
 import { Modal, View, Text, Pressable, StyleSheet, TextInput } from "react-native";
+import { Transaction } from "../types";
+import TransactionForm from "./TransactionForm";
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 type Props = {
   visible: boolean;
   onClose: () => void;
-  onSubmit: (data: { amount: number; date: string; bucket_id: number }) => void;
+  onSubmit: (data: { amount: string; date: string; bucket_id: number }) => void;
 };
 
 export default function TransactionModal({ visible, onClose, onSubmit }: Props) {
-  const [amount, onChangeAmount] = useState<number | null>(0);
-  const [date, onChangeDate] = useState<string | null>(null);
-  const [bucket_id, onChangeId] = useState<number | null>(null);
 
-  const handleSubmit = () => {
-    if (amount && date && bucket_id) {
-      onSubmit({ amount, date, bucket_id });
-    }
+  const handleSubmit = (transaction: Transaction) => {
+    onSubmit(transaction);
     onClose();
   };
 
@@ -23,22 +21,10 @@ export default function TransactionModal({ visible, onClose, onSubmit }: Props) 
     <Modal visible={visible} transparent animationType="slide">
       <View style={styles.modalBackground}>
         <View style={styles.modalBox}>
-          <View style={styles.modalBoxText}>
-            <TextInput 
-              placeholder="Amount"
-            /> 
-            <TextInput 
-              placeholder="Date" 
-            /> 
-            <TextInput 
-              placeholder="Category" 
-            /> 
-          </View>
-
-          <View style={{}}> 
-            <Pressable onPress={handleSubmit}><Text>Submit</Text></Pressable>
-            <Pressable onPress={onClose}><Text>Cancel</Text></Pressable>
-          </View>
+          <TransactionForm
+            onSubmit={handleSubmit}
+            onCancel={onClose}
+          />
         </View>
       </View>
     </Modal>
