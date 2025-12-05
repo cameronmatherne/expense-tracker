@@ -2,27 +2,28 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, Pressable, Image, StyleSheet, ActivityIndicator } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";  
-import { Balance, Expense, Transaction } from "../types";
-import { deleteTransaction, getBalance, getExpenses, getSpent, getTransactions, insertTransaction, updateBalance } from "../services/api";
+import { Balance, FutureTransaction, Purchase } from "../types";
+import { deletePurchase, getBalance, getExpenses, getSpent, getPurchases, insertExpense, insertPurchase, updateBalance, getForecast, deleteForecasted } from "../services/api";
 import BalanceCard from "../components/BalanceCard";
-import TransactionList from "../components/TransactionList";
-import TransactionModal from "../components/TransactionModal";
 import BalanceModal from "../components/BalanceModal";
-import ExpenseModal from "../components/ExpenseModal";
+import ExpenseModal from "../components/ForecastModal";
+import TaskBar from "../components/Taskbar";
+import ForecastList from "../components/ForecastList";
+import PurchaseList from "../components/PurchaseList";
+import { formatMoney } from "../services/util";
 
 const budget = "820.00";
 
 export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [balance, setBalance] = useState<Balance | null>(null);
-  const [spent, setSpent] = useState<String | null>(null);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [transactionModalVisible, setTransactionModalVisible] = useState(false);
+  const [spent, setSpent] = useState<string | null>(null);
+  const [forecasted, setForecasted] = useState<string | null>(null);
+  const [purchases, setPurchases] = useState<Purchase[]>([]);
+  const [expenses, setExpenses] = useState<FutureTransaction[]>([]);
+  const [purchaseModalVisible, setPurchaseModalVisible] = useState(false);
   const [balanceModalVisible, setBalanceModalVisible] = useState(false);
   const [expenseModalVisible, setExpenseModalVisible] = useState(false);
-
-
   
   useEffect(() => {
     const fetchData = async () => {
@@ -32,9 +33,14 @@ export default function HomeScreen() {
       const spentResult = await getSpent();
       setSpent(spentResult)
 
-      const transactionResults = await getTransactions();
-      if (transactionResults) setTransactions(transactionResults);
+      const forecastResult = await getForecast();
+      setForecasted(forecastResult);
 
+      const purchaseResults = await getPurchases();
+      if (purchaseResults) setPurchases(purchaseResults);
+
+      const expenseResult = await getExpenses();
+      if (expenseResult) setExpenses(expenseResult);
       setLoading(false);
     };
     fetchData();
@@ -57,78 +63,89 @@ export default function HomeScreen() {
     );
   }
 
-  const handleTransactionSubmit = async (data: { 
+  const handlePurchaseSubmit = async (data: { 
     amount: string; 
     date: string; 
-    bucket_id: number 
+    bucket_id: number;
+    description: string;
   }) => {
     try {
-      console.log("Submitting transaction:", data);
+      console.log("Submitting purchase:", data);
 
       let amountNum = parseFloat(data.amount);
       amountNum = parseFloat(amountNum.toFixed(2));
 
-      const newTransaction = await insertTransaction(
+      const newPurchase = await insertPurchase(
         amountNum,
         data.date,
-        data.bucket_id
+        data.bucket_id,
+        data.description
       );
 
-      console.log("Transaction created:", newTransaction);
+      console.log("Purchase created:", newPurchase);
 
-      const updatedTransactions = await getTransactions();
-      if (updatedTransactions) {
-        setTransactions(updatedTransactions);
-      }
+      const purchases = await getPurchases();
+      if (purchases) setPurchases(purchases);
 
-      setTransactionModalVisible(false);
+      const updated = await getBalance();
+      if (updated) setBalance(updated);
+
+      const updatedSpent = await getSpent();
+      if (updatedSpent) setSpent(updatedSpent);
+      setPurchaseModalVisible(false);
       
     } catch (error) {
-      console.error("Error inserting transaction:", error);
+      console.error("Error inserting purchase:", error);
 
     }
   };
 
-    const handleExpenseSubmit = async (data: { 
-    amount: string; 
-    due_date: string; 
-    type: string 
+  const handleExpenseSubmit = async (data: { 
+      amount: string; 
+      due_date: string; 
+      expense_type: string;
+      description: string;
   }) => {
     try {
-      console.log("Submitting transaction:", data);
+      console.log("Submitting Expense:", data);
 
       let amountNum = parseFloat(data.amount);
       amountNum = parseFloat(amountNum.toFixed(2));
 
-      const newExpense = await insertExpenses(
+      const newExpense = await insertExpense(
         amountNum,
         data.due_date,
-        data.type,
+        data.expense_type,
+        data.description
       );
 
-      console.log("Transaction created:", newExpense);
+      console.log("Expense created:", newExpense);
 
       const updatedExpenses = await getExpenses();
       if (updatedExpenses) {
         setExpenses(updatedExpenses);
       }
 
-      setTransactionModalVisible(false);
+
+      const updatedForecasted = await getForecast();
+      if (updatedForecasted) setForecasted(updatedForecasted);
+
+      setPurchaseModalVisible(false);
       
     } catch (error) {
-      console.error("Error inserting transaction:", error);
+      console.error("Error inserting purchase:", error);
 
     }
   };
 
-  const handleUpdateBalance = async (data: { 
+  const handleUpdateBalance = async ({id, amount}: { 
     id: number,
     amount: string,
   }) => {
     try {
-      console.log("Submitting balance update:", data);
+      console.log("Submitting balance update:", amount);
 
-      let amountNum = parseFloat(data.amount);
+      let amountNum = parseFloat(amount);
       amountNum = parseFloat(amountNum.toFixed(2));
 
       const newBalance = await updateBalance(
@@ -138,7 +155,7 @@ export default function HomeScreen() {
         "cameron",
       );
 
-      console.log("Balance update transaction created:", newBalance);
+      console.log("Balance update created:", newBalance);
 
       const updatedBalance = await getBalance();
       if (updatedBalance) {
@@ -152,12 +169,12 @@ export default function HomeScreen() {
 
     }
   };
-  const handleDeleteTransaction = async (id: number) => {
+  const handleDeletePurchase = async (id: number) => {
     try {
-      await deleteTransaction(id);
+      await deletePurchase(id);
 
-      const transactions = await getTransactions();
-      if (transactions) setTransactions(transactions);
+      const purchases = await getPurchases();
+      if (purchases) setPurchases(purchases);
 
       const updated = await getBalance();
       if (updated) setBalance(updated);
@@ -170,68 +187,85 @@ export default function HomeScreen() {
     }
   };
 
+  const handleDeleteEexpense = async (id: number) => {
+    try {
+      await deleteForecasted(id);
+
+      const expenses = await getExpenses();
+      if (expenses) setExpenses(expenses);
+
+      const updated = await getBalance();
+      if (updated) setBalance(updated);
+
+      const updatedSpent = await getSpent();
+      if (updatedSpent) setSpent(updatedSpent);
+
+      const updatedForecasted = await getForecast();
+      if (updatedForecasted) setForecasted(updatedForecasted);
+
+    } catch (err) {
+      console.error("Failed to delete:", err);
+    }
+  };
+
+
 
   return (
     <SafeAreaProvider>
       <View style={styles.bodySectionTop}>
+        <Text style={styles.headerText}> Hello, Cameron</Text> 
         <BalanceCard 
           balance={balance} 
           spent={spent}
           budget={budget}
+          forecasted={forecasted}
         />
-        <View style={styles.buttonContainer}> 
-          <Pressable style={styles.button} onPress={() => setTransactionModalVisible(true)}>
-            <Text>Add Transaction</Text>
-          </Pressable>
-  
-          <TransactionModal
-            visible={transactionModalVisible}
-            onClose={() => setTransactionModalVisible(false)}
-            onSubmit={handleTransactionSubmit}
-          />
-  
-          <Pressable style={styles.balanceButton} onPress={() => setBalanceModalVisible(true)}>
-            <Text>Edit Balance</Text>
-          </Pressable>
-  
-          <BalanceModal
-            visible={balanceModalVisible}
-            onClose={() => setBalanceModalVisible(false)}
-            onSubmit={handleUpdateBalance}
-          />
-
-          <Pressable style={styles.button} onPress={() => setExpenseModalVisible(true)}>
-            <Text>Add Expense </Text>
-          </Pressable>
-
-          <ExpenseModal
-            visible={expenseModalVisible}
-            onClose={() => setExpenseModalVisible(false)}
-            onSubmit={handleExpenseSubmit}
-          />
-
-        </View> 
       </View>
-
       <View style={styles.listContainer}>
         <View style={styles.transactionSectionBottom}>
           <Text style={{ fontSize: 18 }}>
-            Recent Purchases: <Text style={{ color: "red" }}>${spent}</Text>
+            Recent Purchases: <Text style={{ color: "red" }}>${Number(spent).toFixed(2)}</Text>
           </Text>
-          <TransactionList 
-            transactions={transactions} 
-            deleteTransaction={handleDeleteTransaction}
-          />
+          <View> 
+            <PurchaseList 
+              purchases={purchases} 
+              deletePurchase={handleDeletePurchase}
+            />
+          </View>
         </View>
         <View style={styles.expenseSectionButtom}>
-          <Text style={{ fontSize: 18}}>Upcoming Bills/ Deposits:</Text>
+          <Text style={{ fontSize: 18}}>Upcoming Bills/ Deposits: 
+            <Text style={{ color: Number(forecasted) < 0 ? "red" : "green" }}>  {formatMoney(Number(forecasted))}</Text>
+          </Text>
+          <View> 
+            <ForecastList 
+              expenses={expenses} 
+              deleteForecasted={handleDeleteEexpense}
+            />
+          </View>
         </View>
       </View>
+      <TaskBar 
+        handlePurchaseSubmit={handlePurchaseSubmit}
+        handleUpdateBalance={handleUpdateBalance}
+        handleExpenseSubmit={handleExpenseSubmit}
+        purchaseModalVisible={purchaseModalVisible}
+        setPurchaseModalVisible={setPurchaseModalVisible}
+        balanceModalVisible={balanceModalVisible}
+        setBalanceModalVisible={setBalanceModalVisible}
+        expenseModalVisible={expenseModalVisible}
+        setExpenseModalVisible={setExpenseModalVisible}
+      />
     </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
+  headerText: {
+    fontSize: 28,
+    fontWeight: "bold",
+    marginTop: 70,
+  },
   listContainer: {
     flex: 1,
     padding: 20,
@@ -269,6 +303,7 @@ const styles = StyleSheet.create({
     flex: 1, 
     borderRadius: 12, 
     backgroundColor: "#f4f4f4",
+    marginBottom: 20,
    },
   expenseSectionButtom: { 
     flex: 1, 

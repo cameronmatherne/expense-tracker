@@ -5,7 +5,7 @@ import { Balance } from "../types";
 
 
 type BalanceFormProps = {
-    onSubmit: (id: number, balance: string) => void;
+    onSubmit: (balance: string) => void;
     onCancel: () => void;
 };
 
@@ -22,7 +22,7 @@ function BalanceForm({onSubmit, onCancel}: BalanceFormProps) {
 
         const formattedAmount = parseFloat(amount).toFixed(2);
     
-        onSubmit(1, formattedAmount);
+        onSubmit(formattedAmount);
 
         setAmount("");
         setError("");

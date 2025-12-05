@@ -1,11 +1,13 @@
 import React from "react";
 import { View, Text, StyleSheet, Image } from "react-native";
 import { Balance } from "../types";
+import { formatMoney } from "../services/util";
 
 type Props = {
   balance: Balance;
-  spent: String | null;
-  budget: String | null;
+  spent: string | null;
+  budget: string | null;
+  forecasted: string | null;
 };
 
 
@@ -17,17 +19,22 @@ type Props = {
 // };
 
 
-export default function BalanceCard({ balance, spent, budget }: Props) {
+export default function BalanceCard({ balance, spent, budget, forecasted }: Props) {
   const budgetNum = budget ? Number(budget) : 0;
   const spentNum = spent ? Number(spent) : 0;
-  
   return (
     <View style={styles.container}>
-        <Image source={require("../assets/images/logo.png")} style={styles.logo} />
-      <Text style={styles.balance}>Balance: ${balance.amount}</Text>
+      <Text style={styles.balanceText}>Account Balance: ${balance.amount}</Text>
+      <Text style={styles.balanceText}>
+        Projected Balance:  
+          <Text style={{ color: (budgetNum - spentNum) < 0 ? "red" : "green" }}> {formatMoney(Number(balance.amount) + Number(forecasted))}
+          </Text>
+      </Text>
       <View style={styles.subContainer}>
-        <Text style={styles.leftToSpend}>
-          Budget Remaining: <Text style={{ color: (budgetNum - spentNum) < 0 ? "red" : "green" }}>${(budgetNum - spentNum).toFixed(2)}</Text>
+        <Text style={styles.balanceText}>
+          Remaining: <Text style={{ color: (budgetNum - spentNum) < 0 ? "red" : "green" }}>${(budgetNum - spentNum).toFixed(2)} 
+            <Text style={{color: "black"}}> / ${budget} </Text>
+        </Text>
         </Text>
       </View>
     </View>
@@ -35,27 +42,19 @@ export default function BalanceCard({ balance, spent, budget }: Props) {
 }
 
 const styles = StyleSheet.create({
-  logo: { 
-    width: 125, 
-    height: 125, 
-    marginTop: 40,
-    marginBottom: -15,
-  },
   container: { 
     flex: 1,
     alignItems: "center", 
+    justifyContent: "center",
   },
   subContainer: {
     flexDirection: "row",
     marginLeft: 20, 
     gap: 10,
   },
-  balance: { 
-    fontSize: 26, 
-    marginBottom: 5 
-  },
-  leftToSpend: { 
+  balanceText: { 
     fontSize: 18,
+    marginBottom: 5 
   },
   totalSpent: { 
     fontSize: 18, 

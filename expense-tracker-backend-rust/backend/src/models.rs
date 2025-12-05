@@ -13,27 +13,37 @@ pub struct Bucket {
 }
 
 #[derive(sqlx::FromRow, Serialize, Deserialize, Debug, Clone)]
-pub struct Transaction {
+pub struct Purchase {
     pub id: i32,
     pub amount: Decimal,
     pub date: NaiveDateTime,
     pub bucket_id: i32, // foreign key → bucket.id
+    pub description: Option<String>,
 }
 
-// #[derive(sqlx::FromRow, Serialize, Deserialize, Debug, Clone)]
-// pub struct Expense {
-//     pub id: i32,
-//     pub amount: Decimal,
-//     pub date: NaiveDateTime,
-// }
+#[derive(sqlx::FromRow, Serialize, Deserialize, Debug, Clone)]
+pub struct Expense {
+    pub id: i32,
+    pub amount: Decimal,
+    pub due_date: String,
+    pub expense_type: String,
+}
 
 #[derive(sqlx::FromRow, Serialize, Deserialize, Debug, Clone)]
 pub struct ForecastedTransaction {
     pub id: i32,
     pub amount: Decimal,
-    pub due_date: NaiveDateTime,
-    // either deposit or withdrawal 
-    pub type: String, 
+    pub due_date: String,
+    pub expense_type: String, 
+    pub description: Option<String>,
+}
+
+#[derive(sqlx::FromRow, Serialize, Deserialize, Debug, Clone)]
+pub struct CreateForecastedTransaction {
+    pub amount: Decimal,
+    pub due_date: String,
+    pub expense_type: String, 
+    pub description: String,
 }
 
 
@@ -54,16 +64,19 @@ pub struct CreateBucket {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-pub struct CreateTransaction {
+pub struct CreatePurchase {
     pub amount: Decimal,
+    pub date: String,
     pub bucket_id: i32,
+    pub description: String,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct CreateExpense {
     pub amount: Decimal,
-    pub due_date: NaiveDateTime,
-    pub type: String,
+    pub due_date: String,
+    pub expense_type: String,
+    pub description: String,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -74,9 +87,11 @@ pub struct CreateBalance {
 }
 
 #[derive (Serialize, Deserialize, Debug)]
-pub struct UpdateTransaction {
+pub struct UpdatePurchase {
     pub amount: Option<Decimal>,
+    pub date: Option<String>,
     pub bucket_id: Option<i32>,
+    pub description: Option<String>,
 }
 
 #[derive (Serialize, Deserialize, Debug)]

@@ -1,0 +1,2 @@
+fn(axum::Json<CreateExpense>) -> impl std::future::Future<Output = Result<impl IntoResponse, (axum::http::StatusCode, axum::Json<JsonValue>)>> {handlers::create_expense}
+fn(axum::Json<CreateExpense>) -> impl std::future::Future<Output = Result<impl IntoResponse, (axum::http::StatusCode, axum::Json<JsonValue>)>> {handlers::create_expense}: Handler<_, _>

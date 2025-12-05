@@ -1,11 +1,14 @@
 use sqlx::{PgPool, query};
 use std::env;
+use sqlx::Error;
 use dotenvy::dotenv;
 use crate::models::*;
 use rust_decimal::Decimal;
+
 use rust_decimal_macros::dec;
-use crate::models::{Transaction, Bucket, Balance, UpdateBalance, UpdateBucket, 
-    UpdateTransaction, CreateBalance, CreateBucket, CreateTransaction, CreateExpense, Expense};
+use chrono::{NaiveDateTime, NaiveDate, Local, Datelike};
+use crate::models::{Purchase, Bucket, Balance, UpdateBalance, UpdateBucket, 
+    UpdatePurchase, CreateBalance, CreateBucket, CreatePurchase, CreateExpense, Expense, ForecastedTransaction};
 
 
 
@@ -97,60 +100,113 @@ pub async fn db_delete_bucket(
     Ok(())
 }
 
-pub async fn db_get_transactions() -> Result<Vec<Transaction>, sqlx::Error> {
+pub async fn db_get_purchases() -> Result<Vec<Purchase>, sqlx::Error> {
     let pool = create_pool().await;
 
     let rows = query!(
         r#"
-        SELECT id, amount, date, bucket_id
+        SELECT id, amount, date, bucket_id, description
         FROM transaction 
         "#
     )
     .fetch_all(&pool)
     .await?;
 
-    let transactions = rows
+    let purchases = rows
         .into_iter()
-        .map(|r| Transaction {
+        .map(|r| Purchase {
             id: r.id,
             amount: r.amount,
             date: r.date,
             bucket_id: r.bucket_id,
+            description: r.description,
         })
         .collect();
 
-    Ok(transactions)
+    Ok(purchases)
 }
 
-pub async fn db_create_transaction(
+pub async fn db_get_expenses() -> Result<Vec<ForecastedTransaction>, sqlx::Error> {
+    let pool = create_pool().await;
+
+    let rows = query!(
+        r#"
+        SELECT id, amount, due_date, expense_type, description
+        FROM expenses 
+        "#
+    )
+    .fetch_all(&pool)
+    .await?;
+
+    let expenses = rows
+        .into_iter()
+        .map(|r| ForecastedTransaction {
+            id: r.id,
+            amount: r.amount,
+            due_date: r.due_date.to_string(),
+            expense_type: r.expense_type,
+            description: r.description,
+        })
+        .collect();
+
+    Ok(expenses)
+}
+
+pub async fn db_create_purchase(
     amount: &Decimal,
+    date: &str,  
     bucket_id: &i32,
+    description: &String,
 ) -> Result<(), sqlx::Error> {
     let pool = create_pool().await;
 
-    let row = query!(
-        "INSERT INTO transaction (amount, bucket_id) VALUES ($1, $2)",
+    let dt = NaiveDateTime::parse_from_str(date, "%Y-%m-%d %H:%M:%S")
+        .map_err(|e| sqlx::Error::Protocol(format!("Invalid date format: {}", e).into()))?;
+
+    query!(
+        "INSERT INTO transaction (amount, date, bucket_id, description) VALUES ($1, $2, $3, $4)",
         amount,
-        bucket_id
+        dt,
+        bucket_id,
+        description
     )
     .execute(&pool)
     .await?;
 
     Ok(())
 }
+
 
 pub async fn db_create_expense(
-    amount: &Decimal,
-    due_date: &NaiveDateTime,
-    type: &String,
+    amount: Decimal,
+    due_date: &String,
+    expense_type: &String,
+    description: &String,
 ) -> Result<(), sqlx::Error> {
     let pool = create_pool().await;
 
+    let mut amount = amount;
+
+    let parts: Vec<u32> = due_date
+        .split('/')
+        .map(|x| x.parse().unwrap())
+        .collect();
+
+    let year = Local::now().year();
+
+    let date = NaiveDate::from_ymd_opt(year, parts[0], parts[1]).unwrap();
+    let datetime = date.and_hms_opt(0, 0, 0).unwrap();
+
+    if expense_type == "Withdrawal" {
+        amount = -amount;
+    } 
+
     let row = query!(
-        "INSERT INTO expenses (amount, due_date, type) VALUES ($1, $2, $3)",
+        "INSERT INTO expenses (amount, due_date, expense_type, description) VALUES ($1, $2, $3, $4)",
         amount,
-        due_date,
-        type    
+        datetime,
+        expense_type,
+        description    
     )
     .execute(&pool)
     .await?;
@@ -158,19 +214,21 @@ pub async fn db_create_expense(
     Ok(())
 }
 
-pub async fn db_modify_transaction(
+pub async fn db_modify_purchase(
     id: &i32,
     amount: Option<Decimal>,
     bucket_id: Option<i32>,
+    description: &Option<String>
 ) -> Result<(), sqlx::Error> {
     let pool = create_pool().await;
 
     // let amount = Decimal::from_str(&amount_string)?;
 
     let row = query!(
-        "UPDATE transaction SET amount = $1, bucket_id = $2 WHERE id = $3",
+        "UPDATE transaction SET amount = $1, bucket_id = $2, description = $3 WHERE id = $4",
         amount,
         bucket_id,
+        description.as_deref().unwrap_or(""), // converts &Option<String> -> &str
         id
     )
     .execute(&pool)
@@ -179,7 +237,7 @@ pub async fn db_modify_transaction(
     Ok(())
 }
 
-pub async fn db_delete_transaction(
+pub async fn db_delete_purchase(
     id: &i32,
 ) -> Result<(), sqlx::Error> {
     let pool = create_pool().await;
@@ -232,6 +290,23 @@ pub async fn db_calculate_spent() -> Result<Decimal, sqlx::Error> {
         r#"
         SELECT SUM(amount) as total_amount
         FROM transaction 
+        "#
+    )
+    .fetch_one(&pool)
+    .await?;
+
+    let total_amount = row.total_amount.unwrap_or(dec!(0.0));
+
+    Ok(total_amount)
+}
+
+pub async fn db_calculate_forecast() -> Result<Decimal, sqlx::Error> {
+    let pool = create_pool().await;
+
+    let row = query!(
+        r#"
+        SELECT SUM(amount) as total_amount
+        FROM expenses 
         "#
     )
     .fetch_one(&pool)
@@ -305,10 +380,30 @@ pub async fn db_calculate_budget() -> Result<(), sqlx::Error> {
     let mut bills: Decimal = dec!(2120.00) * dec!(0.50);
     println! ("income budgeted for bills: {} ", bills);
 
-    let transactions = db_get_transactions().await?;
+    let purchases = db_get_purchases().await?;
     let balance = db_get_balance().await?;
     println!("current balance: {:?} ", balance);
-    let mut total_spent: Decimal = transactions.iter().map(|item| item.amount).sum();
+    let mut total_spent: Decimal = purchases.iter().map(|item| item.amount).sum();
     
     Ok(())
+}
+
+fn convert_mmdd_to_naive_datetime(md: &str) -> Result<NaiveDateTime, Error> {
+    let parts: Vec<&str> = md.split('/').collect();
+    if parts.len() != 2 {
+        return Err(Error::Protocol(format!("Invalid date format: {}", md).into()));
+    }
+
+    let month: u32 = parts[0]
+        .parse()
+        .map_err(|_| Error::Protocol("Invalid month".into()))?;
+
+    let day: u32 = parts[1]
+        .parse()
+        .map_err(|_| Error::Protocol("Invalid day".into()))?;
+
+    let date = NaiveDate::from_ymd_opt(2000, month, day)
+        .ok_or_else(|| Error::Protocol("Invalid month/day combination".into()))?;
+
+    Ok(date.and_hms_opt(0, 0, 0).unwrap())
 }

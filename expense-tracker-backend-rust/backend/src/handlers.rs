@@ -1,5 +1,5 @@
-use crate::models::{Transaction, Bucket, Balance, UpdateBalance, UpdateBucket, 
-    UpdateTransaction, CreateBalance, CreateBucket, CreateTransaction, CreateExpense, Expense};
+use crate::models::{Purchase, Bucket, Balance, UpdateBalance, UpdateBucket, 
+    UpdatePurchase, CreateBalance, CreateBucket, CreatePurchase, CreateExpense, Expense};
 use crate::db::*;
 use sqlx::query;
 use serde_json::json;
@@ -98,10 +98,10 @@ pub async fn delete_bucket(
     }
 }
 
-pub async fn get_transactions() -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
-    match db_get_transactions().await {
-        Ok(transactions) => Ok(Json(json!({
-            "transactions": transactions
+pub async fn get_purchases() -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
+    match db_get_purchases().await {
+        Ok(purchases) => Ok(Json(json!({
+            "purchases": purchases
         }))),
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -112,15 +112,30 @@ pub async fn get_transactions() -> Result<impl IntoResponse, (StatusCode, Json<s
     }
 }
 
-pub async fn create_transaction(
-    Json(payload): Json<CreateTransaction>,
+pub async fn get_expenses() -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
+    match db_get_expenses().await {
+        Ok(expenses) => Ok(Json(json!({
+            "expenses": expenses
+        }))),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({
+                "error": format!("Database error: {}", e)
+            })),
+        )),
+    }
+}
+
+
+pub async fn create_purchase(
+    Json(payload): Json<CreatePurchase>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
-    match db_create_transaction(&payload.amount, &payload.bucket_id).await {
+    match db_create_purchase(&payload.amount, &payload.date, &payload.bucket_id, &payload.description).await {
         Ok(_) => Ok((
             StatusCode::CREATED,
             Json(json!({
                 "status": "success",
-                "message": "Transaction created successfully"
+                "message": "Purchase created successfully"
             })),
         )),
         Err(e) => Err((
@@ -134,9 +149,9 @@ pub async fn create_transaction(
 }
 
 pub async fn create_expense(
-    Json(payload): Json<CreateExpense>,
+    Json(payload): Json<CreateForecastedTransaction>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
-    match db_create_expense(&payload.amount, &payload.due_date, &payload.type).await {
+    match db_create_expense(payload.amount, &payload.due_date, &payload.expense_type, &payload.description).await {
         Ok(_) => Ok((
             StatusCode::CREATED,
             Json(json!({
@@ -155,15 +170,15 @@ pub async fn create_expense(
 }
 
 
-pub async fn update_transaction(
+pub async fn update_purchase(
     Path(id): Path<i32>, 
-    Json(payload): Json<UpdateTransaction>,
+    Json(payload): Json<UpdatePurchase>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
     
-    match db_modify_transaction(&id, payload.amount, payload.bucket_id).await { 
-        Ok(transaction) => Ok((
+    match db_modify_purchase(&id, payload.amount, payload.bucket_id, &payload.description).await { 
+        Ok(purchase) => Ok((
             StatusCode::CREATED, 
-            Json(transaction))
+            Json(purchase))
         ),
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -175,23 +190,23 @@ pub async fn update_transaction(
     }
 }
 
-pub async fn delete_transaction(
+pub async fn delete_purchase(
     Path(id): Path<i32>, 
 ) -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
 
-    match db_delete_transaction(&id).await { 
+    match db_delete_purchase(&id).await { 
     Ok(_) => Ok((
         StatusCode::OK,
         Json(json!({
             "status": "success",
-            "message": format!("Transaction with id {} deleted successfully", id)
+            "message": format!("Purchase with id {} deleted successfully", id)
         })),
     )),
     Err(e) => Err((
         StatusCode::INTERNAL_SERVER_ERROR,
         Json(json!({
             "status": "error",
-            "message": format!("Error trying to delete transaction with id {}: {}", id, e)
+            "message": format!("Error trying to delete purchase with id {}: {}", id, e)
         })),
     )),
     }
@@ -243,6 +258,18 @@ pub async fn calculate_spent() -> Result<impl IntoResponse, (StatusCode, Json<se
     }
 }
 
+pub async fn calculate_forecast() -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
+    match db_calculate_forecast().await {
+        Ok(amount) => Ok(Json(amount)),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({
+                "error": format!("Database error: {}", e)
+            })),
+        )),
+    }
+}
+
 pub async fn create_balance(
     Json(payload): Json<CreateBalance>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
@@ -281,7 +308,7 @@ pub async fn update_balance(
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(json!({
                 "status": "error",
-                "message": format!("Error updating transaction: {}", e)
+                "message": format!("Error updating balance: {}", e)
             })),
         )),
     }
