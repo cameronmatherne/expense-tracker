@@ -11,6 +11,7 @@ import TaskBar from "../components/Taskbar";
 import ForecastList from "../components/ForecastList";
 import PurchaseList from "../components/PurchaseList";
 import { formatMoney } from "../services/util";
+import BudgetBreakdown from "../components/BudgetBreakdown";
 
 const budget = "820.00";
 
@@ -21,10 +22,11 @@ export default function HomeScreen() {
   const [forecasted, setForecasted] = useState<string | null>(null);
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [expenses, setExpenses] = useState<FutureTransaction[]>([]);
+  const [remainingPercentage, setRemainingPercentage] = useState<number | null>(null);
   const [purchaseModalVisible, setPurchaseModalVisible] = useState(false);
   const [balanceModalVisible, setBalanceModalVisible] = useState(false);
   const [expenseModalVisible, setExpenseModalVisible] = useState(false);
-  
+
   useEffect(() => {
     const fetchData = async () => {
       const balanceResult = await getBalance();
@@ -214,36 +216,37 @@ export default function HomeScreen() {
     <SafeAreaProvider>
       <View style={styles.bodySectionTop}>
         <Text style={styles.headerText}> Hello, Cameron</Text> 
-        <BalanceCard 
-          balance={balance} 
-          spent={spent}
-          budget={budget}
-          forecasted={forecasted}
-        />
+        <View style={styles.headerView}>
+          <View style={{ flex: 1 }}>
+            <BalanceCard 
+              balance={balance} 
+              spent={spent}
+              budget={budget}
+              forecasted={forecasted}
+            />
+          </View>
+          <View style={{ width: 120, alignItems: "center" }}>
+            <BudgetBreakdown 
+            percentage={
+              (Number(budget) - Number(spent)) / 
+              Number(budget) * 100
+            }
+            radius={40}
+            />
+          </View>
+        </View>
       </View>
       <View style={styles.listContainer}>
-        <View style={styles.transactionSectionBottom}>
-          <Text style={{ fontSize: 18 }}>
-            Recent Purchases: <Text style={{ color: "red" }}>${Number(spent).toFixed(2)}</Text>
-          </Text>
-          <View> 
-            <PurchaseList 
-              purchases={purchases} 
-              deletePurchase={handleDeletePurchase}
-            />
-          </View>
-        </View>
-        <View style={styles.expenseSectionButtom}>
-          <Text style={{ fontSize: 18}}>Upcoming Bills/ Deposits: 
-            <Text style={{ color: Number(forecasted) < 0 ? "red" : "green" }}>  {formatMoney(Number(forecasted))}</Text>
-          </Text>
-          <View> 
-            <ForecastList 
-              expenses={expenses} 
-              deleteForecasted={handleDeleteEexpense}
-            />
-          </View>
-        </View>
+        <Text style={{ fontSize: 18}}>
+          Recent Purchases: <Text style={{ color: "red" }}>${Number(spent).toFixed(2)}</Text>
+        </Text>
+        <Text style={{ fontSize: 18}}>Upcoming Bills/ Deposits: 
+          <Text style={{ color: Number(forecasted) < 0 ? "red" : "green" }}>  {formatMoney(Number(forecasted))}</Text>
+        </Text>
+        <ForecastList 
+          expenses={expenses} 
+          deleteForecasted={deleteForecasted}
+        />
       </View>
       <TaskBar 
         handlePurchaseSubmit={handlePurchaseSubmit}
@@ -261,6 +264,12 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
+  headerView: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
+    marginTop: 15,
+  },
   headerText: {
     fontSize: 28,
     fontWeight: "bold",
@@ -268,13 +277,8 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     flex: 1,
-    padding: 20,
+    padding: 15,
     gap: 10,
-  },
-  logo: { 
-    width: 100, 
-    height: 100, 
-    marginTop: 90,
   },
   loading: { 
     flex: 1, 
@@ -285,12 +289,6 @@ const styles = StyleSheet.create({
     flex: 1, 
     justifyContent: "center", 
     alignItems: "center" 
-  },
-  topHeader: { 
-    flex: 0.5, 
-    paddingHorizontal: 20, 
-    alignItems: "center", 
-    justifyContent: "center" 
   },
   bodySectionTop: { 
     flex: .5, 

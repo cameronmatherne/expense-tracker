@@ -23,8 +23,8 @@ export default function PurchaseList({ purchases , deletePurchase }: Props) {
                 day: '2-digit' 
               })}
             </Text>
-            <Text style={{ paddingHorizontal: 8 }}> {formatMoney(Number(item.amount))}</Text>
-            <Text style={{ paddingHorizontal: 8 }}> {item.description}</Text>
+            <Text style={styles.amount}> {formatMoney(Number(item.amount))}</Text>
+            <Text style={styles.description}> {item.description}</Text>
             <View style={styles.buttonStack}> 
               <Pressable 
                 style={styles.deleteButton} 
@@ -40,8 +40,19 @@ export default function PurchaseList({ purchases , deletePurchase }: Props) {
 }
 
 const styles = StyleSheet.create({
+  amount: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
   container: {
     paddingHorizontal: 20,
+  },
+  description: {
+    width: 100,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 4, 
+
   },
   deleteButton: {
     borderRadius: 12,

@@ -1,8 +1,9 @@
-import React, { DO_NOT_USE_OR_YOU_WILL_BE_FIRED_EXPERIMENTAL_REACT_NODES } from "react";
+// import React, { DO_NOT_USE_OR_YOU_WILL_BE_FIRED_EXPERIMENTAL_REACT_NODES } from "react";
 import { FlatList, View, Text, Pressable, StyleSheet, ScrollView } from "react-native";
 import { FutureTransaction, Purchase } from "../types";
 import { deleteForecasted, deletePurchase } from "../services/api";
 import { formatMoney } from "../services/util";
+import React, { useMemo } from "react";
 
 type Props = {
   expenses: FutureTransaction[];
@@ -11,21 +12,40 @@ type Props = {
 
 export default function ForecastList({ expenses, deleteForecasted }: Props) {
 
+
+  const sortedExpenses = useMemo(() => {
+    return [...expenses].sort((a, b) => {
+      return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+    });
+  }, [expenses]);
+
+
   return (
     <View style={styles.container}> 
       <FlatList
-        data={expenses}
+        data={sortedExpenses}
         showsVerticalScrollIndicator={true}
         keyExtractor={(item) => item.id.toString()}
         renderItem={({ item }) => (
           <View style={styles.listings}>
             <Text>{new Date(item.due_date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' })}</Text>
-            <Text style={{ paddingHorizontal: 8,color: Number(item.amount) < 0 ? "red" : "green"}}> 
-              <Text style={{ color: Number(item.amount) < 0 ? "red" : "green"}}></Text>
+              <Text
+                style={{         
+                  width: 100, 
+                  textAlign: "right",    
+                  paddingHorizontal: 8,
+                  color: Number(item.amount) < 0 ? "red" : "green",
+                }}
+              >
               {formatMoney(Number(item.amount))}
             </Text>
             
-            <Text style={{ paddingHorizontal: 8 }}> 
+            <Text style={{ 
+              width: 80,
+              paddingHorizontal: 8,
+              alignItems: "flex-start", 
+              textAlign: "left",
+             }}> 
               {item.description}
             </Text>
             
